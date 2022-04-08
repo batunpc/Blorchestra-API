@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+mongoose.set("useFindAndModify", false); //https://mongoosejs.com/docs/deprecations.html#findandmodify
+
 const bcrypt = require("bcryptjs");
 let mongoDBConnectionString = process.env.MONGO_URL;
 let Schema = mongoose.Schema;
@@ -104,6 +106,7 @@ module.exports.addFavourite = function (id, favId) {
             })
             .catch((err) => {
               reject(`Unable to update favourites for user with id: ${id}`);
+              console.error(err);
             });
         } else {
           reject(`Unable to update favourites for user with id: ${id}`);

@@ -79,7 +79,7 @@ app.put(
   passport.authenticate("jwt", { session: false }),
   (req, res) => {
     userService
-      .addFavourite(req.user._id)
+      .addFavourite(req.user._id, req.params.id)
       .then((data) => {
         res.json(data);
       })

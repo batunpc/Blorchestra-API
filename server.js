@@ -63,8 +63,8 @@ app.get(
   "/api/user/favourites",
   passport.authenticate("jwt", { session: false }),
   (req, res) => {
-    dataService
-      .getFavorites(req.user._id)
+    userService
+      .getFavourites(req.user._id)
       .then((data) => {
         res.json(data);
       })
@@ -78,7 +78,7 @@ app.put(
   "/api/user/favourites/:id",
   passport.authenticate("jwt", { session: false }),
   (req, res) => {
-    dataService
+    userService
       .addFavourite(req.user._id)
       .then((data) => {
         res.json(data);
@@ -93,7 +93,7 @@ app.delete(
   "/api/user/favourites/:id",
   passport.authenticate("jwt", { session: false }),
   (req, res) => {
-    dataService
+    userService
       .removeFavourite(req.user._id)
       .then((data) => {
         res.json(data);

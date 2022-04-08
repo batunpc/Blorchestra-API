@@ -46,11 +46,12 @@ app.post("/api/user/login", (req, res) => {
   userService
     .checkUser(req.body)
     .then((user) => {
-      var payload = {
+      let payload = {
         _id: user._id,
         userName: user.userName,
+        favourites: user.favourites,
       };
-      var token = jwt.sign(payload, process.env.JWT_SECRET);
+      let token = jwt.sign(payload, process.env.JWT_SECRET);
 
       res.json({ message: "login successful", token: token });
     })

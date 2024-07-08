@@ -1,7 +1,7 @@
-const mongoose = require("mongoose");
-mongoose.set("useFindAndModify", false); //https://mongoosejs.com/docs/deprecations.html#findandmodify
+const mongoose = require('mongoose');
+mongoose.set('useFindAndModify', false); //https://mongoosejs.com/docs/deprecations.html#findandmodify
 
-const bcrypt = require("bcryptjs");
+const bcrypt = require('bcryptjs');
 let mongoDBConnectionString = process.env.MONGO_URL;
 let Schema = mongoose.Schema;
 
@@ -23,11 +23,11 @@ module.exports.connect = function () {
       useNewUrlParser: true,
       useCreateIndex: true,
     });
-    db.on("error", (err) => {
+    db.on('error', (err) => {
       reject(err);
     });
-    db.once("open", () => {
-      User = db.model("users", userSchema);
+    db.once('open', () => {
+      User = db.model('users', userSchema);
       resolve();
     });
   });
@@ -36,7 +36,7 @@ module.exports.connect = function () {
 module.exports.registerUser = function (userData) {
   return new Promise(function (resolve, reject) {
     if (userData.password != userData.password2)
-      reject("Passwords do not match");
+      reject('Passwords do not match');
     else {
       bcrypt
         .hash(userData.password, 10)
@@ -46,10 +46,18 @@ module.exports.registerUser = function (userData) {
 
           newUser.save((err) => {
             if (err) {
-              if (err.code == 11000) reject("User Name already taken");
-              else reject("There was an error creating the user: " + err);
+              if (err.code == 11000)
+                reject('User Name already taken');
+              else
+                reject(
+                  'There was an error creating the user: ' + err,
+                );
             } else
-              resolve("User " + userData.userName + " successfully registered");
+              resolve(
+                'User ' +
+                  userData.userName +
+                  ' successfully registered',
+              );
           });
         })
         .catch((err) => reject(err));
@@ -62,16 +70,20 @@ module.exports.checkUser = function (userData) {
     User.findOne({ userName: userData.userName })
       .exec()
       .then((user) => {
-        bcrypt.compare(userData.password, user.password).then((res) => {
-          if (res === true) {
-            resolve(user);
-          } else {
-            reject("Incorrect password for user " + userData.userName);
-          }
-        });
+        bcrypt
+          .compare(userData.password, user.password)
+          .then((res) => {
+            if (res === true) {
+              resolve(user);
+            } else {
+              reject(
+                'Incorrect password for user ' + userData.userName,
+              );
+            }
+          });
       })
       .catch((err) => {
-        reject("Unable to find user " + userData.userName);
+        reject('Unable to find user ' + userData.userName);
       });
   });
 };
@@ -98,18 +110,22 @@ module.exports.addFavourite = function (id, favId) {
           User.findByIdAndUpdate(
             id,
             { $addToSet: { favourites: favId } },
-            { new: true }
+            { new: true },
           )
             .exec()
             .then((user) => {
               resolve(user.favourites);
             })
             .catch((err) => {
-              reject(`Unable to update favourites for user with id: ${id}`);
+              reject(
+                `Unable to update favourites for user with id: ${id}`,
+              );
               console.error(err);
             });
         } else {
-          reject(`Unable to update favourites for user with id: ${id}`);
+          reject(
+            `Unable to update favourites for user with id: ${id}`,
+          );
         }
       });
   });
@@ -117,7 +133,11 @@ module.exports.addFavourite = function (id, favId) {
 
 module.exports.removeFavourite = function (id, favId) {
   return new Promise(function (resolve, reject) {
-    User.findByIdAndUpdate(id, { $pull: { favourites: favId } }, { new: true })
+    User.findByIdAndUpdate(
+      id,
+      { $pull: { favourites: favId } },
+      { new: true },
+    )
       .exec()
       .then((user) => {
         resolve(user.favourites);

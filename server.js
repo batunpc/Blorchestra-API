@@ -3,12 +3,23 @@ const express = require('express');
 const userService = require('./user-service.js');
 const cors = require('cors');
 const app = express();
-app.use(express.json());
-app.use(cors());
-//JWT setup
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const passportJWT = require('passport-jwt');
+
+// Enhanced CORS configuration
+const corsOptions = {
+  origin:
+    process.env.ALLOWED_ORIGIN || 'https://blorchestra.vercel.app',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
+app.use(cors(corsOptions));
+
+app.use(express.json());
+
 // JSON Web Token Setup
 const ExtractJwt = passportJWT.ExtractJwt;
 const JwtStrategy = passportJWT.Strategy;
@@ -16,106 +27,94 @@ const jwtOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme('jwt'),
   secretOrKey: process.env.JWT_SECRET,
 };
-//setup strategy
-const strategy = new JwtStrategy(jwtOptions, function (
-  jwt_payload,
-  next,
-) {
-  console.log('payload received', jwt_payload);
+
+// Setup JWT strategy
+const strategy = new JwtStrategy(jwtOptions, (jwt_payload, next) => {
   if (jwt_payload) {
     next(null, {
       _id: jwt_payload._id,
       userName: jwt_payload.userName,
     });
-  } else next(null, false); //prevent the acccess to next route
+  } else {
+    next(null, false);
+  }
 });
-passport.use(strategy);
-app.use(passport.initialize()); // add passport as application-level middleware
 
-//Routes
-//=======
+passport.use(strategy);
+app.use(passport.initialize());
+
+// Helper function for error responses
+const sendErrorResponse = (res, statusCode, message) => {
+  res.status(statusCode).json({ message });
+};
+
+// Routes
 app.post('/api/user/register', (req, res) => {
   userService
     .registerUser(req.body)
-    .then((msg) => {
-      res.json({ message: msg });
-    })
-    .catch((msg) => {
-      res.status(422).json({ message: msg });
-    });
+    .then((msg) => res.json({ message: msg }))
+    .catch((msg) => sendErrorResponse(res, 422, msg));
 });
 
 app.post('/api/user/login', (req, res) => {
   userService
     .checkUser(req.body)
     .then((user) => {
-      let payload = {
-        _id: user._id,
-        userName: user.userName,
-      };
-      let token = jwt.sign(payload, jwtOptions.secretOrKey);
-
-      res.json({ message: 'login successful', token: token });
+      const payload = { _id: user._id, userName: user.userName };
+      const token = jwt.sign(payload, jwtOptions.secretOrKey, {
+        expiresIn: '1h',
+      });
+      res.json({ message: 'login successful', token });
     })
-    .catch((msg) => {
-      res.status(422).json({ message: msg });
-    });
+    .catch((msg) => sendErrorResponse(res, 422, msg));
 });
 
-app.get(
-  '/api/user/favourites',
-  passport.authenticate('jwt', { session: false }),
-  (req, res) => {
-    userService
-      .getFavourites(req.user._id)
-      .then((data) => {
-        res.json(data);
-      })
-      .catch((err) => {
-        res.status(422).json({ message: err });
-      });
-  },
-);
+// Middleware for JWT authentication
+const authenticateJWT = passport.authenticate('jwt', {
+  session: false,
+});
 
-app.put(
-  '/api/user/favourites/:id',
-  passport.authenticate('jwt', { session: false }),
-  (req, res) => {
-    userService
-      .addFavourite(req.user._id, req.params.id)
-      .then((data) => {
-        res.json(data);
-      })
-      .catch((err) => {
-        res.status(422).json({ message: err });
-      });
-  },
-);
+app.get('/api/user/favourites', authenticateJWT, (req, res) => {
+  userService
+    .getFavourites(req.user._id)
+    .then((data) => res.json(data))
+    .catch((err) => sendErrorResponse(res, 422, err));
+});
+
+app.put('/api/user/favourites/:id', authenticateJWT, (req, res) => {
+  userService
+    .addFavourite(req.user._id, req.params.id)
+    .then((data) => res.json(data))
+    .catch((err) => sendErrorResponse(res, 422, err));
+});
 
 app.delete(
   '/api/user/favourites/:id',
-  passport.authenticate('jwt', { session: false }),
+  authenticateJWT,
   (req, res) => {
     userService
       .removeFavourite(req.user._id, req.params.id)
-      .then((data) => {
-        res.json(data);
-      })
-      .catch((err) => {
-        res.status(422).json({ message: err });
-      });
+      .then((data) => res.json(data))
+      .catch((err) => sendErrorResponse(res, 422, err));
   },
 );
 
-const HTTP_PORT = process.env.PORT;
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
+
+// Start server
+const HTTP_PORT = process.env.PORT || 3000;
 userService
   .connect()
   .then(() => {
     app.listen(HTTP_PORT, () => {
-      console.log('API listening on: ' + HTTP_PORT);
+      console.log(`API listening on port ${HTTP_PORT}`);
     });
   })
   .catch((err) => {
-    console.log('unable to start the server: ' + err);
-    process.exit();
+    console.error('Unable to start the server:', err);
+    process.exit(1);
   });

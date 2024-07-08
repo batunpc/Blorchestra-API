@@ -65,7 +65,10 @@ app.use(passport.initialize());
 
 // Helper function for error responses
 const sendErrorResponse = (res, statusCode, message) => {
-  res.status(statusCode).json({ message });
+  console.error(`Sending error response: ${statusCode} - ${message}`);
+  res
+    .status(statusCode)
+    .json({ message: message || 'An error occurred' });
 };
 
 // Routes
@@ -73,7 +76,10 @@ app.post('/api/user/register', (req, res) => {
   userService
     .registerUser(req.body)
     .then((msg) => res.json({ message: msg }))
-    .catch((msg) => sendErrorResponse(res, 422, msg));
+    .catch((error) => {
+      console.error('Register error:', error);
+      sendErrorResponse(res, 422, error.toString());
+    });
 });
 
 app.post('/api/user/login', (req, res) => {
@@ -86,7 +92,10 @@ app.post('/api/user/login', (req, res) => {
       });
       res.json({ message: 'login successful', token });
     })
-    .catch((msg) => sendErrorResponse(res, 422, msg));
+    .catch((error) => {
+      console.error('Login error:', error);
+      sendErrorResponse(res, 422, error.toString());
+    });
 });
 
 // Middleware for JWT authentication
